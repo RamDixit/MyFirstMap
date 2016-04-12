@@ -1,0 +1,119 @@
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+  path {
+    stroke: #2f4f4f;
+    stroke-width:1px;
+  }
+
+  #tooltip {
+    color: #222;
+    background: #fff;
+    padding: .2em;
+    border-radius: 2px;
+    border-style: solid;
+    border-width: 1px;
+    border-color: #2f4f4f;
+    position: absolute;
+  }
+
+  #tooltip.hidden {
+    display: none;
+  }
+
+  #tooltip p {
+    margin: 0;
+    font-family: sans-serif;
+    font-size: 12px;
+    line-height: 14px;
+  }
+</style>
+<body>
+  <script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <script src="//d3js.org/d3-queue.v2.min.js"></script>
+  <script src="//d3js.org/topojson.v1.min.js"></script>
+  <script>
+    //set up the map parameters
+    var width = 960,
+      height = 500;
+     
+    var svg = d3.select('body').append('svg')
+        .attr('width', width)
+        .attr('height', height);
+     
+    var projection = d3.geo.albersUsa()
+      .scale(1000)
+      .translate([width / 2, height / 2]);
+     
+    var path = d3.geo.path()
+      .projection(projection);
+
+    var color = d3.scale.linear()
+        .domain([0,10000])
+        .range(["white","black"]);
+
+    //merge the states and testers data into dataset
+    function joinData(error, states, testers) {
+      if(error) { console.log(error); }
+
+      for (i=0;i<states.objects.units.geometries.length;i++) {
+
+        for (k=0;k<testers.length;k++){
+
+          if (states.objects.units.geometries[i].id == testers[k].state){
+
+            states.objects.units.geometries[i].id = parseInt(testers[k].count);
+
+          }
+
+        }
+      }
+      
+      return states;
+    }
+
+    //draw the map
+    function makeMyMap(dataset) {
+      svg.selectAll(".unit")
+          .data(topojson.feature(dataset, dataset.objects.units).features)
+          .enter().append("path")
+          .attr("class", function(d) { return d.properties.name;})
+          .attr("fill", function(d) { return color(d.id); })
+          .attr("d", path)
+          .on ("mousemove", function(d) {
+            //Get this bar's x/y values, then augment for the tooltip
+            var mouse = d3.mouse(svg.node()).map(function(d){ return parseInt(d);});
+                //Update the tooltip position and value
+                d3.select("#tooltip")
+                  .style("left", (mouse[0] + 10) +'px')
+                  .style("top", (mouse[1] - 20) + "px")
+                  .select("#tag")
+                  .text(d.properties.name);
+                d3.select("#tooltip") 
+                  .select("#annotation")
+                  .text(d.id);
+                //Show the tooltip
+                d3.select("#tooltip").classed("hidden", false);
+          })    
+          .on("mouseout", function() {
+                //Hide the tooltip
+                d3.select("#tooltip").classed("hidden", true);
+          });
+    }
+
+    //run the code
+    d3_queue.queue()
+      .defer(d3.json, 'usa.json')
+      .defer(d3.csv, 'testers_state_count.csv')
+      .await(function run (error,states,testers){
+        dataset = joinData(error,states,testers);
+        makeMyMap(dataset);    
+      });
+  </script>
+
+  <div id="tooltip" class="hidden">
+    <p><strong id="tag"></strong></p>
+    <p id="annotation"><span></span></p>
+  </div>
+</body>
