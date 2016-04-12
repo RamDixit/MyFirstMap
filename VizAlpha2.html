@@ -104,8 +104,8 @@
 
     //run the code
     d3_queue.queue()
-      .defer(d3.json, 'usa.json')
-      .defer(d3.csv, 'testers_state_count.csv')
+      .defer(d3.json, '../master/usa.json')
+      .defer(d3.csv, '../master/testers_state_count.csv')
       .await(function run (error,states,testers){
         dataset = joinData(error,states,testers);
         makeMyMap(dataset);    
